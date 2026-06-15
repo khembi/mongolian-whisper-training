@@ -124,7 +124,7 @@ If you pushed this folder to GitHub:
 
 ```bash
 cd /workspace
-git clone https://github.com/YOUR_USER/mongolian-whisper-training.git
+git clone https://github.com/khembi/mongolian-whisper-training.git
 cd mongolian-whisper-training
 ```
 
@@ -138,14 +138,36 @@ Upload the `mongolian-whisper-training` folder to `/workspace/`.
 scp -r mongolian-whisper-training root@YOUR_POD_IP:/workspace/
 ```
 
-### 3. Install dependencies
+### 3. One-command training (recommended)
+
+Paste into RunPod **Start Command** (PyTorch 2.8 template, 50 GB disk):
+
+```bash
+bash -c 'curl -fsSL https://raw.githubusercontent.com/khembi/mongolian-whisper-training/master/scripts/runpod_start.sh | bash'
+```
+
+Or SSH in and run:
+
+```bash
+cd /workspace
+git clone https://github.com/khembi/mongolian-whisper-training.git
+cd mongolian-whisper-training
+bash scripts/runpod_start.sh
+```
+
+This clones the repo, picks **cu128** (Blackwell) or **cu124** (A100) automatically, trains, merges, evaluates, and converts to `ggml-large-v3-mn.bin`.
+
+Optional env vars: `BATCH_SIZE=8`, `EPOCHS=2`, `CONVERT_GGML=0`, `HF_TOKEN=...`, `PUSH_TO_HUB=1 HUB_MODEL_ID=you/whisper-large-v3-mn`.
+
+### 4. Manual install (alternative)
 
 ```bash
 cd /workspace/mongolian-whisper-training
-bash scripts/setup.sh
+bash scripts/setup_cuda_blackwell.sh   # RTX PRO 6000
+# or: bash scripts/setup_cuda_ampere.sh  # A100 / L40S
 ```
 
-### 4. (Optional) Hugging Face login
+### 5. (Optional) Hugging Face login
 
 Only needed if you want to push the model to the Hub:
 
@@ -358,6 +380,9 @@ mongolian-whisper-training/
 ├── run_eval.py               # Test WER evaluation
 └── scripts/
     ├── setup.sh              # Install deps on RunPod
+    ├── setup_cuda_ampere.sh  # A100 / L40S (cu124)
+    ├── setup_cuda_blackwell.sh # RTX PRO 6000 (cu128)
+    ├── runpod_start.sh       # One-shot RunPod bootstrap
     ├── run_training.sh       # Full pipeline
     └── convert_to_ggml.sh    # HF → whisper.cpp conversion
 ```
