@@ -3,15 +3,7 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
-echo "==> Installing PyTorch 2.7.1+cu128 (Blackwell / sm_120)..."
-pip install --upgrade pip
-pip install "torch==2.7.1+cu128" "torchaudio==2.7.1+cu128" \
-  --index-url https://download.pytorch.org/whl/cu128 --force-reinstall
-
-echo "==> Installing other deps (without upgrading torch)..."
-pip install transformers "datasets[audio]>=2.19.0,<3.0.0" accelerate peft evaluate jiwer \
-  soundfile librosa tensorboard safetensors huggingface_hub --no-deps
-pip install numpy packaging psutil pyyaml regex tokenizers tqdm filelock requests httpx hf-xet
+bash scripts/_install_training_deps.sh 2.7.1+cu128 2.7.1+cu128 cu128
 
 echo "==> Verifying CUDA + Blackwell arch..."
 python -c "

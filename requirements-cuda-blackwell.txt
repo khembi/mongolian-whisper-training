@@ -9,6 +9,7 @@
 #   pip install numpy packaging psutil pyyaml regex tokenizers tqdm filelock requests httpx hf-xet
 #
 # Or: bash scripts/setup_cuda_blackwell.sh  /  .\scripts\setup_cuda_blackwell.ps1
+# (setup scripts use requirements-training.txt with full transitive deps)
 #
 # Verify after install:
 #   python -c "import torch; print(torch.__version__, torch.cuda.get_device_capability(0))"
