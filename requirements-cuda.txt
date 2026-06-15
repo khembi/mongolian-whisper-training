@@ -1,0 +1,29 @@
+# Ampere / Ada / Hopper (RTX 3060, A100, L40S, etc.) — CUDA 12.4 wheels
+# For RTX PRO 6000 Blackwell use requirements-cuda-blackwell.txt (cu128) instead.
+#
+# Install PyTorch CUDA first (do not let peft overwrite torch):
+#   pip install torch==2.6.0+cu124 torchaudio==2.6.0+cu124 --index-url https://download.pytorch.org/whl/cu124
+# Then install the rest:
+#   pip install -r requirements.txt --no-deps peft
+#   pip install -r requirements.txt
+
+torch==2.6.0+cu124
+torchaudio==2.6.0+cu124
+transformers>=4.40.0
+datasets[audio]>=2.19.0,<3.0.0
+accelerate>=0.28.0
+peft>=0.11.0
+evaluate>=0.4.0
+jiwer>=3.0.0
+soundfile>=0.12.0
+librosa>=0.10.0
+tensorboard>=2.14.0
+safetensors>=0.4.0
+huggingface_hub>=0.23.0
+numpy
+packaging
+psutil
+pyyaml
+regex
+tokenizers
+tqdm

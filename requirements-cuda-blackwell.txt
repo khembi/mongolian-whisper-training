@@ -1,0 +1,35 @@
+# RTX PRO 6000 / RTX 5090 / other Blackwell GPUs (sm_120, compute capability 12.0)
+#
+# Requires PyTorch built with CUDA 12.8+. Do NOT use cu124 wheels — they lack sm_120 kernels.
+#
+# Install (Linux or Windows):
+#   pip install torch==2.7.1+cu128 torchaudio==2.7.1+cu128 --index-url https://download.pytorch.org/whl/cu128
+#   pip install -r requirements.txt --no-deps peft
+#   pip install transformers "datasets[audio]>=2.19.0,<3.0.0" accelerate evaluate jiwer soundfile librosa tensorboard safetensors huggingface_hub
+#   pip install numpy packaging psutil pyyaml regex tokenizers tqdm filelock requests httpx hf-xet
+#
+# Or: bash scripts/setup_cuda_blackwell.sh  /  .\scripts\setup_cuda_blackwell.ps1
+#
+# Verify after install:
+#   python -c "import torch; print(torch.__version__, torch.cuda.get_device_capability(0))"
+
+torch==2.7.1+cu128
+torchaudio==2.7.1+cu128
+transformers>=4.40.0
+datasets[audio]>=2.19.0,<3.0.0
+accelerate>=0.28.0
+peft>=0.11.0
+evaluate>=0.4.0
+jiwer>=3.0.0
+soundfile>=0.12.0
+librosa>=0.10.0
+tensorboard>=2.14.0
+safetensors>=0.4.0
+huggingface_hub>=0.23.0
+numpy
+packaging
+psutil
+pyyaml
+regex
+tokenizers
+tqdm

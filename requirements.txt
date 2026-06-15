@@ -1,0 +1,13 @@
+torch>=2.1.0
+torchaudio>=2.1.0
+transformers>=4.40.0
+datasets[audio]>=2.19.0,<3.0.0
+accelerate>=0.28.0
+peft>=0.11.0
+evaluate>=0.4.0
+jiwer>=3.0.0
+soundfile>=0.12.0
+librosa>=0.10.0
+tensorboard>=2.14.0
+safetensors>=0.4.0
+huggingface_hub>=0.23.0
