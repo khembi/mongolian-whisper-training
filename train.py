@@ -5,6 +5,7 @@ Fine-tune openai/whisper-large-v3 on Mongolian Common Voice data with LoRA.
 Usage:
   python train.py
   python train.py --output-dir ./output --epochs 3 --batch-size 16
+  python train.py --prepared-dataset ./prepared-dataset --bf16
 """
 
 from __future__ import annotations
@@ -20,7 +21,6 @@ from typing import Any
 
 import evaluate
 import torch
-from datasets import Audio, DatasetDict, load_dataset
 from peft import LoraConfig, get_peft_model
 from transformers import (
     Seq2SeqTrainer,
@@ -28,6 +28,8 @@ from transformers import (
     WhisperForConditionalGeneration,
     WhisperProcessor,
 )
+
+from data_prep import PREP_SPLITS, load_or_prepare_splits, load_prepared_dataset, load_raw_dataset
 
 DEFAULT_DATASET = "Ganaa0614/mongolian-commonvoice-stt-translated-full"
 DEFAULT_MODEL = "openai/whisper-large-v3"
@@ -101,46 +103,22 @@ def parse_args() -> argparse.Namespace:
         default=None,
         help="Stop after N training steps (overrides epochs for quick tests).",
     )
+    parser.add_argument(
+        "--prepared-dataset",
+        default=None,
+        help="Load precomputed features from save_to_disk output (skip preprocessing).",
+    )
+    parser.add_argument(
+        "--prepared-cache-dir",
+        default="./prepared-dataset",
+        help="Cache each split to disk while preparing; resume if a split already exists.",
+    )
+    parser.add_argument(
+        "--skip-test-prep",
+        action="store_true",
+        help="Do not prepare the test split before training (prepare later for eval).",
+    )
     return parser.parse_args()
-
-
-from audio_io import audio_duration_sec, load_audio_array
-
-
-def prepare_dataset(
-    batch: dict,
-    processor: WhisperProcessor,
-    text_column: str,
-    max_input_length: int,
-    max_label_length: int,
-) -> dict:
-    arr, sr = load_audio_array(batch["audio"])
-    batch["input_features"] = processor.feature_extractor(
-        arr,
-        sampling_rate=sr,
-        return_tensors="np",
-    ).input_features[0]
-
-    text = batch[text_column].strip().lower()
-    batch["labels"] = processor.tokenizer(text).input_ids
-    return batch
-
-
-def is_valid_sample(
-    batch: dict,
-    text_column: str,
-    max_duration_sec: float,
-) -> bool:
-    duration = audio_duration_sec(batch["audio"])
-    text = (batch.get(text_column) or "").strip()
-    return 0.1 < duration <= max_duration_sec and len(text) > 0
-
-
-def dataset_num_proc() -> int | None:
-    """Windows multiprocessing in datasets.filter/map is unreliable."""
-    if os.name == "nt":
-        return None
-    return min(8, os.cpu_count() or 1)
 
 
 def main() -> None:
@@ -159,55 +137,37 @@ def main() -> None:
     print(f"Precision:  {'bf16' if use_bf16 else 'fp16' if use_fp16 else 'fp32'}")
     print("=" * 60)
 
-    raw = load_dataset(args.dataset_name, args.dataset_config)
-    # decode=False avoids torchcodec (broken on many Windows setups)
-    raw = raw.cast_column("audio", Audio(sampling_rate=16_000, decode=False))
-
-    if args.max_samples:
-        raw = DatasetDict(
-            {split: ds.select(range(min(args.max_samples, len(ds)))) for split, ds in raw.items()}
-        )
-        print(f"Limited to {args.max_samples} samples per split (smoke test mode)")
-
     processor = WhisperProcessor.from_pretrained(
         args.model_name,
         language=args.language,
         task=args.task,
     )
 
-    max_input_length = int(args.max_duration_sec * 16000 / 160)  # 10ms frames
     max_label_length = 448
 
-    def _prepare(batch: dict) -> dict:
-        return prepare_dataset(
-            batch,
-            processor,
-            args.text_column,
-            max_input_length,
-            max_label_length,
-        )
-
-    def _is_valid(batch: dict) -> bool:
-        return is_valid_sample(batch, args.text_column, args.max_duration_sec)
-
-    dataset = DatasetDict()
-    nproc = dataset_num_proc()
-    for split in raw:
-        filtered = raw[split].filter(
-            _is_valid,
-            num_proc=nproc,
-            desc=f"Filtering {split}",
-        )
-        dataset[split] = filtered.map(
-            _prepare,
-            remove_columns=filtered.column_names,
-            num_proc=nproc,
-            desc=f"Preparing {split}",
+    if args.prepared_dataset:
+        print(f"Loading prepared dataset: {args.prepared_dataset}")
+        dataset = load_prepared_dataset(args.prepared_dataset)
+    else:
+        splits = tuple(s for s in PREP_SPLITS if not (args.skip_test_prep and s == "test"))
+        raw = load_raw_dataset(args.dataset_name, args.dataset_config, args.max_samples)
+        if args.max_samples:
+            print(f"Limited to {args.max_samples} samples per split (smoke test mode)")
+        dataset = load_or_prepare_splits(
+            raw=raw,
+            processor=processor,
+            text_column=args.text_column,
+            max_duration_sec=args.max_duration_sec,
+            cache_dir=args.prepared_cache_dir,
+            splits=splits,
         )
 
     print(f"Train samples: {len(dataset['train'])}")
     print(f"Val samples:   {len(dataset['validation'])}")
-    print(f"Test samples:  {len(dataset['test'])}")
+    if "test" in dataset:
+        print(f"Test samples:  {len(dataset['test'])}")
+    else:
+        print("Test samples:  (not prepared — use prepare_data.py before final eval)")
 
     model = WhisperForConditionalGeneration.from_pretrained(
         args.model_name,
@@ -300,6 +260,8 @@ def main() -> None:
     print("\nEvaluating on test split...")
     if args.max_steps:
         print("(skipped in smoke test mode — use full training for WER eval)")
+    elif "test" not in dataset:
+        print("(skipped — test split not prepared; run prepare_data.py --splits test)")
     else:
         test_metrics = trainer.evaluate(dataset["test"], metric_key_prefix="test")
         print(f"Test WER: {test_metrics.get('test_wer', test_metrics):.2f}%")

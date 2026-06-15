@@ -22,8 +22,8 @@ checkpoint-*/
 test_metrics.txt
 wandb/
 
-# Hugging Face / dataset cache (if stored locally)
-.cache/
+# Prepared mel features (large; upload to RunPod separately)
+prepared-dataset/
 hf_cache/
 
 # Python

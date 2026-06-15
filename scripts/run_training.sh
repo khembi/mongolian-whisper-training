@@ -7,14 +7,21 @@ cd "$(dirname "$0")/.."
 BATCH_SIZE="${BATCH_SIZE:-16}"
 EPOCHS="${EPOCHS:-3}"
 OUTPUT_DIR="${OUTPUT_DIR:-./output}"
+PREPARED_DATASET="${PREPARED_DATASET:-}"
+
+TRAIN_ARGS=(
+  --output-dir "$OUTPUT_DIR"
+  --batch-size "$BATCH_SIZE"
+  --grad-accum 2
+  --epochs "$EPOCHS"
+  --bf16
+)
+if [ -n "$PREPARED_DATASET" ]; then
+  TRAIN_ARGS+=(--prepared-dataset "$PREPARED_DATASET")
+fi
 
 echo "==> Step 1/3: Training LoRA..."
-python train.py \
-  --output-dir "$OUTPUT_DIR" \
-  --batch-size "$BATCH_SIZE" \
-  --grad-accum 2 \
-  --epochs "$EPOCHS" \
-  --bf16
+python train.py "${TRAIN_ARGS[@]}"
 
 echo "==> Step 2/3: Merging LoRA weights..."
 python merge_lora.py \

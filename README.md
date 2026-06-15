@@ -86,14 +86,39 @@ This runs 5 training steps on `whisper-small` with 16 samples — enough to veri
 
 ---
 
-## Part 1 — RunPod setup
+## Recommended: Local prep + RunPod GPU only
+
+**Cheapest path** — prepare on your PC overnight (free), upload once, train on RunPod (~4 h, ~$8).
+
+```powershell
+# Windows — run overnight
+cd c:\Projects\mongolian-whisper-training
+.\scripts\prepare_data_local.ps1
+
+# Upload
+scp -r prepared-dataset root@POD_IP:/workspace/mongolian-whisper-training/
+```
+
+```bash
+# RunPod — GPU only
+bash scripts/setup_cuda_blackwell.sh
+bash scripts/runpod_train_only.sh
+```
+
+Full guide: [docs/local-prep-runpod-train.md](docs/local-prep-runpod-train.md)
+
+---
+
+## Part 1 — RunPod setup (all-in-one alternative)
+
+> All-in-one runs preprocessing on the GPU pod (~5 h extra, ~$10 more). Prefer local prep above.
 
 ### 1. Create a pod
 
 1. Go to [runpod.io](https://www.runpod.io) → **Pods** → **Deploy**
 2. Choose GPU: **RTX PRO 6000 96GB** (if available), **A100 80GB PCIe**, or **A100 40GB**
 3. Choose template: **PyTorch 2.8** (see table below). Then reinstall the correct CUDA wheel — RunPod templates often ship `cu118`/`cu124`, which **do not work** on RTX PRO 6000.
-4. Disk: **50 GB** minimum (model + dataset cache)
+4. Disk: **80 GB** for all-in-one; **50 GB** if uploading prepared data
 5. Deploy the pod
 
 #### RunPod PyTorch template picker
@@ -373,18 +398,19 @@ Convert the aligned word timestamps into Remotion `Caption` objects for animatio
 
 ```
 mongolian-whisper-training/
-├── README.md                 # This guide
-├── requirements.txt
-├── train.py                  # LoRA fine-tuning
-├── merge_lora.py             # Merge LoRA → full model
-├── run_eval.py               # Test WER evaluation
+├── README.md
+├── prepare_data.py           # Local CPU prep → prepared-dataset/
+├── data_prep.py              # Shared prep logic
+├── train.py                  # LoRA fine-tuning (--prepared-dataset)
+├── merge_lora.py
+├── run_eval.py
+├── docs/local-prep-runpod-train.md
 └── scripts/
-    ├── setup.sh              # Install deps on RunPod
-    ├── setup_cuda_ampere.sh  # A100 / L40S (cu124)
-    ├── setup_cuda_blackwell.sh # RTX PRO 6000 (cu128)
-    ├── runpod_start.sh       # One-shot RunPod bootstrap
-    ├── run_training.sh       # Full pipeline
-    └── convert_to_ggml.sh    # HF → whisper.cpp conversion
+    ├── prepare_data_local.ps1  # Windows overnight prep
+    ├── runpod_train_only.sh    # RunPod GPU-only pipeline
+    ├── runpod_start.sh         # All-in-one RunPod bootstrap
+    ├── run_training.sh
+    └── convert_to_ggml.sh
 ```
 
 ---

@@ -77,8 +77,7 @@ def test_dataset_only() -> bool:
     from datasets import Audio, load_dataset
     from transformers import WhisperProcessor
 
-    from audio_io import load_audio_array
-    from train import is_valid_sample, prepare_dataset
+    from data_prep import is_valid_sample, prepare_batch
 
     ds = load_dataset(
         "Ganaa0614/mongolian-commonvoice-stt-translated-full",
@@ -92,7 +91,7 @@ def test_dataset_only() -> bool:
 
     for i, row in enumerate(ds):
         assert is_valid_sample(row, "sentence", 20.0), f"Sample {i} failed validation"
-        prepared = prepare_dataset(row, processor, "sentence", 2000, 448)
+        prepared = prepare_batch(row, processor, "sentence")
         assert "input_features" in prepared and "labels" in prepared
         print(f"  Sample {i}: OK ({len(row['sentence'])} chars)")
 
